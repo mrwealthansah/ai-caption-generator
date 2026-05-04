@@ -13,10 +13,20 @@ st.set_page_config(
 client = OpenAI()
 USER_FILE = "users.json"
 
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if "username" not in st.session_state:
+    st.session_state.username = ""
+
+if "credits" not in st.session_state:
+    st.session_state.credits = 10
+
 
 def load_users():
     if not os.path.exists(USER_FILE):
         return {}
+
     with open(USER_FILE, "r") as file:
         return json.load(file)
 
@@ -32,8 +42,10 @@ def hash_password(password):
 
 def create_user(username, password):
     users = load_users()
+
     if username in users:
         return False
+
     users[username] = hash_password(password)
     save_users(users)
     return True
@@ -60,12 +72,7 @@ div[data-testid="stToolbar"] {
 }
 
 .block-container {
-    padding-top: 2.5rem;
-    max-width: 1150px;
-}
-
-.block-container {
-    padding-top: 2.5rem;
+    padding-top: 2rem;
     max-width: 950px;
 }
 
@@ -126,16 +133,8 @@ div[data-testid="stToolbar"] {
     color: #000052;
     line-height: 1.6;
 }
-
 </style>
 """, unsafe_allow_html=True)
-
-
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-
-if "username" not in st.session_state:
-    st.session_state.username = ""
 
 
 st.markdown("""
@@ -182,6 +181,7 @@ else:
 
     with col_a:
         st.markdown(f"### Welcome, {st.session_state.username}")
+        st.info(f"Credits remaining: {st.session_state.credits}")
 
     with col_b:
         if st.button("Logout"):
@@ -218,12 +218,18 @@ else:
                 ["Question", "Bold Statement", "Story", "Controversial", "Educational"]
             )
 
+        if st.session_state.credits <= 0:
+            st.error("You've used all your free credits for today.")
+            st.stop()
+
         generate = st.button("Generate Captions")
 
     if generate:
         if not topic:
             st.warning("Please enter a topic first.")
         else:
+            st.session_state.credits -= 1
+
             with st.spinner("Crafting viral captions for you..."):
                 response = client.responses.create(
                     model="gpt-4.1-mini",
